@@ -389,7 +389,7 @@ catch (e) {
   if (mounted) {
     setState(() {
       _messages.add(ChatMessage(
-        text: "Model file not found in assets. Please add phi-3.5-mini-q4.gguf to assets/models/ folder and rebuild the app.\n\nError: $e",
+        text: "Model file not found in assets.\n\nError: $e",
         isUser: false,
       ));
       _isInitializing = false;
