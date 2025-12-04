@@ -2,7 +2,7 @@
 
 import 'dart:async';
 import 'dart:io';
-
+import 'drive_backup.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
@@ -229,6 +229,7 @@ Future<void> _stopRecording(int slot) async {
       }
       _clipPaths[slot] = expected.path;
       print('Clip path updated: ${_clipPaths[slot]}');
+      await DriveBackup.upload(expected.path, 'hugo_clip_$slot.m4a');
     } else {
       print('Recording failed: file is empty or does not exist');
       if (mounted) {
@@ -292,19 +293,60 @@ Future<void> _stopRecording(int slot) async {
               ),
             ],
             const Spacer(),
-            ElevatedButton(
-              onPressed: _allClipsRecorded
-                  ? () {
-                      if (!mounted) return;
-                      
-                      Navigator.of(context).push(MaterialPageRoute(
-                          builder: (_) => ChatPage(
-                              clipPaths:
-                                  List<String>.from(_clipPaths.values.cast<String>()))));
-                    }
-                  : null,
-              child: const Text('Proceed (unlocked when all 3 recorded)'),
+          ElevatedButton(
+  onPressed: _allClipsRecorded
+      ? () async {
+          if (!mounted) return;
+          
+          // Capture context before async gap
+          final navigator = Navigator.of(context);
+          final scaffoldMessenger = ScaffoldMessenger.of(context);
+          
+          // Show loading dialog
+          showDialog(
+            context: context,
+            barrierDismissible: false,
+            builder: (context) => const AlertDialog(
+              content: Row(
+                children: [
+                  CircularProgressIndicator(),
+                  SizedBox(width: 16),
+                  Text('Uploading clips...'),
+                ],
+              ),
             ),
+          );
+
+          try {
+            // Upload all 3 clips
+            for (var i = 1; i <= 3; i++) {
+              await DriveBackup.upload(
+                _clipPaths[i]!,
+                'hugo_clip_$i.m4a',
+              );
+            }
+
+            if (!mounted) return;
+            navigator.pop(); // Close loading dialog
+
+            // Navigate to chat
+            navigator.push(MaterialPageRoute(
+              builder: (_) => ChatPage(
+                clipPaths: List<String>.from(_clipPaths.values.cast<String>()),
+              ),
+            ));
+          } catch (e) {
+            if (!mounted) return;
+            navigator.pop(); // Close loading dialog
+            
+            scaffoldMessenger.showSnackBar(
+              SnackBar(content: Text('Upload failed: $e')),
+            );
+          }
+        }
+      : null,
+  child: const Text('Proceed (unlocked when all 3 recorded)'),
+),
             const SizedBox(height: 12),
             Text(
                 'Status: ${_allClipsRecorded ? 'Unlocked' : 'Locked — record all 3 clips'}'),
