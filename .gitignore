@@ -44,3 +44,4 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 assets/models/phi-3.5-mini-q4.gguf
+assets/models/phi-3.5-mini-q4.gguf
